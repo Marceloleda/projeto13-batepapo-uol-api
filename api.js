@@ -76,7 +76,7 @@ api.get('/participants', async(req, res)=>{
 })
 
 api.post('/messages', async(req,res)=>{
-    const {from, to, text, type} = req.body;
+    const {to, text, type} = req.body;
     const user = req.headers.user;
     const validation = messageSchema.validate(req.body) 
     try{
@@ -106,15 +106,73 @@ api.post('/messages', async(req,res)=>{
 })
 
 api.get("/messages", async(req,res)=>{
+    const limit = parseInt(req.query.limit)
+    const user = req.headers.user
+    
     try{
-        const messages = await db.collection('mensagens').find().toArray()
-        res.status(200).send(messages)
+        const messages = await db.collection('mensagens').find({}).toArray()
+        const permit_messages = messages.filter(valor => (
+            valor.from === user ||
+            valor.to === user ||
+            valor.to === "Todos" ||
+			valor.type === "messages"        
+        ))
+        res.status(200).send((!limit) ? (permit_messages) : (permit_messages.slice(-limit)));
+
     }
     catch(error){
         res.status(422).send(error.message)
         return
     }
 })
+api.post("/status", async (req, res) => {
+    const { user } = req.headers;
+  
+    try {
+      const participant = await db.collection("participantes").findOne({ name: user });
+  
+      if (!participant) {
+        res.status(404).send("usuario nao cadastrado");
+        return;
+      }
+      await db.collection("participantes").updateOne({ name: user }, { $set: { lastStatus: Date.now()}});
+      res.sendStatus(200);
+
+    } catch (error) {
+      res.status(500).send(error.message);
+      return
+    }
+  });
+
+
+setInterval(async () => {
+    const time = Date.now() - 10 * 1000; 
+    console.log(time);
+    try {
+      const participant_off = await db.collection("participantes").find({ lastStatus: { $lte: time } }) .toArray();
+
+      if (participant_off.length > 0) {
+        const menssages_off = participant_off.map(
+          (participant_off) => {
+            return {
+              from: participant_off.name,
+              to: "Todos",
+              text: "sai da sala...",
+              type: "status",
+              time: dayjs().format("HH:mm:ss"),
+            };
+          }
+        );
+  
+        await db.collection("mensagens").insertMany(menssages_off);
+        await db.collection("participantes").deleteOne({ lastStatus: { $lte: time } });
+      }
+    } catch (error) {
+      res.status(500).send(error.message);
+      return
+    }
+  }, 15000);
+          
 
 
 api.listen(5000, console.log("listening in port 5000"))
