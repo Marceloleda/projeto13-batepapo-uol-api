@@ -137,8 +137,8 @@ api.post("/status", async (req, res) => {
       }
       await db.collection("participantes").updateOne({ name: user }, { $set: { lastStatus: Date.now()}});
       res.sendStatus(200);
-
-    } catch (error) {
+    } 
+    catch (error) {
       res.status(500).send(error.message);
       return
     }
@@ -167,7 +167,8 @@ setInterval(async () => {
         await db.collection("mensagens").insertMany(menssages_off);
         await db.collection("participantes").deleteOne({ lastStatus: { $lte: time } });
       }
-    } catch (error) {
+    }
+    catch (error) {
       res.status(500).send(error.message);
       return
     }
