@@ -171,7 +171,7 @@ setInterval(async () => {
       res.status(500).send(error.message);
       return
     }
-  }, 15000);
+  }, 150000);
           
 
 
