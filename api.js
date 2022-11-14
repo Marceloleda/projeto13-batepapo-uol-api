@@ -22,17 +22,14 @@ const nameSchema = joi.object({
     name: joi.string().pattern(/^[A-Za-záàâãéèêíïóôõöúçñÁÀÂÃÉÈÍÏÓÔÕÖÚÇÑ ]+$/).required()
 })
 const messageSchema = joi.object({
-    to: Joi.string().pattern(/^[A-Za-záàâãéèêíïóôõöúçñÁÀÂÃÉÈÍÏÓÔÕÖÚÇÑ ]+$/).required(),
-    text: Joi.string().pattern(/^[A-Za-záàâãéèêíïóôõöúçñÁÀÂÃÉÈÍÏÓÔÕÖÚÇÑ ]+$/).required(),
-    type: Joi.string().valid("message", "private_message").required(),
-    time: Joi.string(),
+    to: joi.string().pattern(/^[A-Za-záàâãéèêíïóôõöúçñÁÀÂÃÉÈÍÏÓÔÕÖÚÇÑ ]+$/).required(),
+    text: joi.string().pattern(/^[A-Za-záàâãéèêíïóôõöúçñÁÀÂÃÉÈÍÏÓÔÕÖÚÇÑ ]+$/).required(),
+    type: joi.string().valid("message", "private_message").required()
 })
 
 api.post("/participants", async(req, res)=>{
     const {name} = req.body;
     const validation = nameSchema.validate(req.body)
-    const{from, to, text, type, time} = req.body;
-
 
     try{
         if(validation.error){
@@ -52,11 +49,11 @@ api.post("/participants", async(req, res)=>{
             
         })
 
-        await db.collection('mensagem').insertOne({
-            from,
-            to,
-            text,
-            type,
+        await db.collection('mensagens').insertOne({
+            from: name,
+            to: "Todos",
+            text: "entra na sala...",
+            type: 'status',
             time: dayjs().format("HH:mm:ss")
         })
         res.status(201).send("Created")
@@ -70,7 +67,6 @@ api.post("/participants", async(req, res)=>{
 api.get('/participants', async(req, res)=>{
     try{
         const usuarios = await db.collection('participantes').find().toArray()
-        console.log(usuarios)
         res.send(usuarios)
     }
     catch(error){
@@ -80,10 +76,39 @@ api.get('/participants', async(req, res)=>{
 })
 
 api.post('/messages', async(req,res)=>{
-    const {to, text, type} = req.body;
-    const {User} = req.headers;
+    const {from, to, text, type} = req.body;
+    const user = req.headers.user;
+    const validation = messageSchema.validate(req.body) 
     try{
+        if(validation.error){
+            res.status(422).send(validation.error.details)
+            return
+        }
+        const participantExist = await db.collection('participantes').findOne({name: user})
+        if(!participantExist){
+            res.status(409).send("participante nao existe")
+            return
+        }
+        await db.collection('mensagens').insertOne({
+            from: user,
+            to,
+            text,
+            type,
+            time: dayjs().format("HH:mm:ss")
+        })
+        res.status(201).send(participantExist)
 
+    }
+    catch(error){
+        res.status(422).send(error.message)
+        return
+    }
+})
+
+api.get("/messages", async(req,res)=>{
+    try{
+        const messages = await db.collection('mensagens').find().toArray()
+        res.status(200).send(messages)
     }
     catch(error){
         res.status(422).send(error.message)
