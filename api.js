@@ -55,7 +55,7 @@ api.post("/participants", async (req, res)=>{
         })
         res.status(201).send("Created")
     }catch(error){
-        res.status(422).send(error.message)
+        return res.status(422).send(error.message)
     }
 })
 api.get("/participants", async (req, res)=>{
@@ -63,26 +63,76 @@ api.get("/participants", async (req, res)=>{
         const participantes = await db.collection("participants").find().toArray()
         res.send(participantes).status(200)
     }catch(error){
-        res.status(422).send(error.message) 
+        return res.status(422).send(error.message) 
     }
 })
 api.post("/messages", async (req,res)=>{
     const {to, text, type} = req.body;
-    const {User} = req.headers;
-
+    const {user} = req.headers
     const validation = messageSchema.validate({to, text, type}, {abortEarly: false}) 
-    if(validation.error){
-        return res.sendStatus(422)
+    const exist = await db.collection('participants').findOne({name: user})
+
+    try{
+        if(validation.error){
+            return res.sendStatus(422)
+        }
+        if(!exist){
+            res.sendStatus(422)
+            return
+        }
+        await db.collection('messages').insertOne({
+            from: user,
+            to,
+            text,
+            type,
+            time: dayjs().format("HH:mm:ss")
+        })
+    }catch(error){
+        return res.status(422).send(error.message)
     }
-    const exist = await db.collection('participants').findOne({User})
-    if(exist){
-        res.status(409).send("igual")
-        return
-    }
+    
+    res.sendStatus(201)
 
 
 })
+api.get("/messages", async (req,res)=>{
+    const limit = parseInt(req.query.limit)
+    const {user} = req.headers
+
+    try{
+        const messages = await db.collection("messages").find({}).toArray()
+        
+        const permitMessages = messages.filter(value=>(
+            value.from === user ||
+            value.to === user ||
+            value.to === "todos" ||
+            value.type === "messages"
+        ));
+        res.status(200).send((!limit) ? (permitMessages) : (permitMessages.slice(-limit)));
+    }catch(error){
+        console.log(error)
+        return res.status(422).send(error.message)
+
+    }
+})
+api.post("/status", async (req, res) => {
+    const { user } = req.headers;
+  
+    try {
+      const participant = await db.collection("participants").findOne({ name: user });
+  
+      if (!participant) {
+        res.sendStatus(404)
+        return;
+      }
+      await db.collection("participants").updateOne({ name: user }, { $set: { lastStatus: Date.now()}});
+      res.sendStatus(200);
+
+    } catch (error) {
+      res.status(422).send(error.message);
+      return
+    }
+  });
 
 
-
-api.listen(process.env.PORT, ()=>console.log("listening on port 5000"));
+api.listen(process.env.PORT, ()=>console.log(`listening on port ${process.env.PORT}`));
