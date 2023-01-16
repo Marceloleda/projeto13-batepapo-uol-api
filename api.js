@@ -23,6 +23,9 @@ mongoClient.connect().then(()=>{
 const userSchema = joi.object({
     name: joi.string().required()
 })
+const limitSchema = joi.object({
+    limit: joi.number().min(1)
+})
 const messageSchema = joi.object({
     to: joi.string().min(1).required(),
     text: joi.string().min(1).required(),
@@ -77,7 +80,7 @@ api.post("/messages", async (req,res)=>{
             return res.sendStatus(422)
         }
         if(!exist){
-            res.sendStatus(422)
+            res.sendStatus(404)
             return
         }
         await db.collection('messages').insertOne({
@@ -98,9 +101,10 @@ api.post("/messages", async (req,res)=>{
 api.get("/messages", async (req,res)=>{
     const limit = parseInt(req.query.limit)
     const {user} = req.headers
-
+    const validation = limitSchema.validate({limit}, {abortEarly: false}) 
+    console.log(validation)
     try{
-        if(limit < 0){
+        if(validation.error){
             return res.sendStatus(422)
         }
         const messages = await db.collection("messages").find({}).toArray()
