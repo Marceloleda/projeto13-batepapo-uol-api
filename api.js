@@ -106,7 +106,7 @@ api.get("/messages", async (req,res)=>{
             value.from === user || value.to === user ||
             value.to === "Todos" || value.type === "messages"
         ));
-        res.status(200).send(permitMessages);
+        res.status(200).send((!limit) ? (permitMessages) : (permitMessages.slice(-limit)));
     }catch(error){
         console.log(error)
         return res.status(422).send(error.message)
@@ -131,6 +131,32 @@ api.post("/status", async (req, res) => {
       return
     }
   });
+
+  setInterval(async ()=>{
+    const time = Date.now() - 10 * 1000;
+    try{
+        const saiParticipant = await db.collection("participants").find({
+            lastStatus: { $lte: time }
+        }).toArray();
+        if(saiParticipant.length > 0){
+            const enviaMessages = saiParticipant.map(
+                (desloga)=>{
+                    return{
+                        from: desloga.name,
+                        to: "Todos",
+                        text: "sai da sala...",
+                        type: "status",
+                        time: dayjs().format("HH:mm:ss"),
+                    }
+                }
+            )
+            await db.collection("messages").insertMany(enviaMessages)
+            await db.collection("participants").deleteOne({lastStatus: {$lte: time}});
+        }
+    }catch(error){
+        return res.status(500).send(error.message);
+    }
+  }, 15000)
 
 
 api.listen(process.env.PORT, ()=>console.log(`listening on port ${process.env.PORT}`));
