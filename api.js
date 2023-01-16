@@ -24,8 +24,8 @@ const userSchema = joi.object({
     name: joi.string().required()
 })
 const messageSchema = joi.object({
-    to: joi.string().required(),
-    text: joi.string().required(),
+    to: joi.string().min(1).required(),
+    text: joi.string().min(1).required(),
     type: joi.string().valid("message", "private_message").required()
 })
 
@@ -103,12 +103,10 @@ api.get("/messages", async (req,res)=>{
         const messages = await db.collection("messages").find({}).toArray()
         
         const permitMessages = messages.filter(value=>(
-            value.from === user ||
-            value.to === user ||
-            value.to === "todos" ||
-            value.type === "messages"
+            value.from === user || value.to === user ||
+            value.to === "Todos" || value.type === "messages"
         ));
-        res.status(200).send((!limit) ? (permitMessages) : (permitMessages.slice(-limit)));
+        res.status(200).send(permitMessages);
     }catch(error){
         console.log(error)
         return res.status(422).send(error.message)
