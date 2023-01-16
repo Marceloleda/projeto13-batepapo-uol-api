@@ -23,9 +23,7 @@ mongoClient.connect().then(()=>{
 const userSchema = joi.object({
     name: joi.string().required()
 })
-const limitSchema = joi.object({
-    limit: joi.string()
-})
+
 const messageSchema = joi.object({
     to: joi.string().min(1).required(),
     text: joi.string().min(1).required(),
@@ -102,18 +100,27 @@ api.post("/messages", async (req,res)=>{
 api.get("/messages", async (req,res)=>{
     const limit = parseInt(req.query.limit)
     const {user} = req.headers
-    const validation = userSchema.validate(limit, {abortEarly: false})
+    const limitSchema = joi.object({
+        limit: joi.number().min(1)
+    })
 
+    
     try{
-
+        if(limit !== NaN && limit){
+            const validation = limitSchema.validate({limit}, {abortEarly: false})
+            if(validation.error){
+                return res.sendStatus(422)
+            }
+        }
         const messages = await db.collection("messages").find({}).toArray()
         
         const permitMessages = messages.filter(value=>(
             value.from === user || value.to === user ||
             value.to === "Todos" || value.type === "messages"
         ));
+        console.log(limit)
 
-        res.status(200).send((!limit) ? (permitMessages) : (permitMessages.reverse().slice(-limit)));
+        res.status(200).send((!limit) ? permitMessages.reverse() : (permitMessages.slice(-limit)).reverse());
     }catch(error){
         console.log(error)
         return res.status(422).send(error.message)
