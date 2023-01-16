@@ -29,7 +29,8 @@ const userSchema = joi.object({
 const messageSchema = joi.object({
     to: joi.string().min(1).required(),
     text: joi.string().min(1).required(),
-    type: joi.string().valid("message", "private_message").required()
+    type: joi.string().valid("message", "private_message").required(),
+    user: joi.string().min(1).required()
 })
 
 api.post("/participants", async (req, res)=>{
@@ -72,7 +73,7 @@ api.get("/participants", async (req, res)=>{
 api.post("/messages", async (req,res)=>{
     const {to, text, type} = req.body;
     const {user} = req.headers
-    const validation = messageSchema.validate({to, text, type}, {abortEarly: false}) 
+    const validation = messageSchema.validate({to, text, type, user}, {abortEarly: false}) 
     const exist = await db.collection('participants').findOne({name: user})
 
     try{
@@ -80,7 +81,7 @@ api.post("/messages", async (req,res)=>{
             return res.sendStatus(422)
         }
         if(!exist){
-            res.sendStatus(404)
+            res.sendStatus(422)
             return
         }
         await db.collection('messages').insertOne({
@@ -124,12 +125,12 @@ api.post("/status", async (req, res) => {
   
     try {
         if(!user){
-          res.sendStatus(422)
+          return res.sendStatus(422)
         }
       const participant = await db.collection("participants").findOne({ name: user });
   
       if (!participant) {
-        res.sendStatus(422)
+        res.sendStatus(404)
         return;
       }
       await db.collection("participants").updateOne({ name: user }, { $set: { lastStatus: Date.now()}});
