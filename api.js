@@ -17,15 +17,15 @@ let db;
 
 mongoClient.connect().then(()=>{
     console.log("mongoDB connected");
-    db = mongoClient.db()
+    db = mongoClient.db('batepapouol')
 })
 
 const userSchema = joi.object({
     name: joi.string().required()
 })
-const limitSchema = joi.object({
-    limit: joi.number().min(1)
-})
+// const limitSchema = joi.object({
+//     limit: joi.number().min(1)
+// })
 const messageSchema = joi.object({
     to: joi.string().min(1).required(),
     text: joi.string().min(1).required(),
@@ -101,7 +101,7 @@ api.post("/messages", async (req,res)=>{
 api.get("/messages", async (req,res)=>{
     const limit = parseInt(req.query.limit)
     const {user} = req.headers
-    const validation = limitSchema.validate({limit}, {abortEarly: false}) 
+    // const validation = limitSchema.validate({limit}, {abortEarly: false}) 
     try{
         const messages = await db.collection("messages").find({}).toArray()
         
@@ -109,9 +109,9 @@ api.get("/messages", async (req,res)=>{
             value.from === user || value.to === user ||
             value.to === "Todos" || value.type === "messages"
         ));
-        if(validation.error){
-            return res.sendStatus(422)
-        }
+        // if(validation.error){
+        //     return res.sendStatus(422)
+        // }
         res.status(200).send((!limit) ? (permitMessages) : (permitMessages.slice(-limit)));
     }catch(error){
         console.log(error)
@@ -123,10 +123,13 @@ api.post("/status", async (req, res) => {
     const { user } = req.headers;
   
     try {
+        if(!user){
+          res.sendStatus(422)
+        }
       const participant = await db.collection("participants").findOne({ name: user });
   
       if (!participant) {
-        res.sendStatus(404)
+        res.sendStatus(422)
         return;
       }
       await db.collection("participants").updateOne({ name: user }, { $set: { lastStatus: Date.now()}});
