@@ -17,7 +17,7 @@ let db;
 
 mongoClient.connect().then(()=>{
     console.log("mongoDB connected");
-    db = mongoClient.db('batepapouol')
+    db = mongoClient.db()
 })
 
 const userSchema = joi.object({
@@ -102,7 +102,6 @@ api.get("/messages", async (req,res)=>{
     const limit = parseInt(req.query.limit)
     const {user} = req.headers
     const validation = limitSchema.validate({limit}, {abortEarly: false}) 
-    console.log(validation)
     try{
         const messages = await db.collection("messages").find({}).toArray()
         
