@@ -104,15 +104,15 @@ api.get("/messages", async (req,res)=>{
     const validation = limitSchema.validate({limit}, {abortEarly: false}) 
     console.log(validation)
     try{
-        if(validation.error){
-            return res.sendStatus(422)
-        }
         const messages = await db.collection("messages").find({}).toArray()
         
         const permitMessages = messages.filter(value=>(
             value.from === user || value.to === user ||
             value.to === "Todos" || value.type === "messages"
         ));
+        if(validation.error){
+            return res.sendStatus(422)
+        }
         res.status(200).send((!limit) ? (permitMessages) : (permitMessages.slice(-limit)));
     }catch(error){
         console.log(error)
