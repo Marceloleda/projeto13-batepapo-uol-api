@@ -98,27 +98,19 @@ api.post("/messages", async (req,res)=>{
 
 })
 api.get("/messages", async (req,res)=>{
-    const limit = parseInt(req.query.limit)
+    const limit = req.query.limit
     const {user} = req.headers
-    const limitSchema = joi.object({
-        limit: joi.number().min(1)
-    })
-
-    
     try{
-        if(limit !== NaN && limit){
-            const validation = limitSchema.validate({limit}, {abortEarly: false})
-            if(validation.error){
-                return res.sendStatus(422)
-            }
-        }
+        if(isNaN(limit) === true && limit || parseInt(limit) <=0 ){
+            return res.sendStatus(422)
+        }       
+        
         const messages = await db.collection("messages").find({}).toArray()
         
         const permitMessages = messages.filter(value=>(
             value.from === user || value.to === user ||
             value.to === "Todos" || value.type === "messages"
         ));
-        console.log(limit)
 
         res.status(200).send((!limit) ? permitMessages.reverse() : (permitMessages.slice(-limit)).reverse());
     }catch(error){
