@@ -1,7 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import joi from 'joi';
 import dayjs from 'dayjs';
 
@@ -100,6 +100,9 @@ api.get("/messages", async (req,res)=>{
     const {user} = req.headers
 
     try{
+        if(limit < 0){
+            return res.sendStatus(422)
+        }
         const messages = await db.collection("messages").find({}).toArray()
         
         const permitMessages = messages.filter(value=>(
@@ -157,6 +160,26 @@ api.post("/status", async (req, res) => {
         return res.status(500).send(error.message);
     }
   }, 15000)
+
+  api.delete("/messages/:id", async (req, res)=>{
+    const {user} = req.headers;
+    const {id} = req.params;
+    try{
+        const existMessage = await db.collection("messages").findOne({_id: ObjectId(id)})
+        if(!existMessage){
+            return res.sendStatus(404)
+        }
+        if(user !== existMessage.from){
+            return res.sendStatus(401)
+        }
+        await db.collection("messages").deleteOne({
+            _id: existMessage._id
+        })
+        res.sendStatus(200)
+    }catch(error){
+        return res.sendStatus(401).send(error.message);
+    }
+  })
 
 
 api.listen(process.env.PORT, ()=>console.log(`listening on port ${process.env.PORT}`));
